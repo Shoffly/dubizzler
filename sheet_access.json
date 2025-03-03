@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "psyched-cubist-342516",
+  "private_key_id": "88a714af43d7a515fae353b2e8f240863ea4dc8f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCMKQ3BMTewoaZ2\nokCyVBr4Muj4zQuy9pDu8/GItsJDQN1y0zP0arnUXVBRm/oyPBIdYnrEg9wVNcCU\nKKw6iLO0JPPXpnAmdcwMskAVdn/lUjGU21/wq5+eXKgTc5vl2o81CTT3sVMLjN1I\nO9x0skPYWF8rjrMCAHAkL9mHapKMzT91mC8iJLhbHScbXLN60Tjca0VgxbgbIHyK\n3fOm7cK+bgAuhrCfegSgzHQv3HJ76eFIWHV1O1IoRfGx1nCZDjA5WDDdcbgTrdEX\nc4TH40aOXfR8ilOYNcKTa4JnNOzk8jzEHXc4bQWZQn3wNM5jmhby2hWXwiq5N8Gs\nlF8wIYd7AgMBAAECggEAImUOsYqU6nz4vyMY8koOZjsEDc4voUa9kU3+xzhmGp/n\n1/45QTERkiomBCjdMIeqQFjC3Meo8fGDZThH74NNahcpWZHH8sA0hycU789pGkrd\nzPQ6qnJLVM7TFhboOnM0cmTkgSYcRXjXcpryAhce7A/fpu45QnP+EPtHC+KcvP1i\nFlVKUwOY2FZoetB/XXf7+WJTFyaNisya0FNJBvsSy4GVOUqZWrh+qVt3FBUArQWV\nqORleXppnqPKLVRXNDau5x79dDnwZ98+kQ4GuYmSrOJRXaGFigQlWrwUFd9RvKk2\nmX9N4L9UBHWMPWZYuBPdYqC7sYzBEBy4lUEE4/38fQKBgQDGBvcqOi3YcaF1beA7\njgSbLHkTROvb6sF+kprzHkyW0cQmIo14sGMA5VgatnZZVAWUtiLgJx1IhAKebgzI\ntVg0DNpu9vXBC39681/5x+TOAsuKF0wOgNNFeKHVeCoOzSvXuKJYLfGHaNAw9xQw\nP4qBAKYK08P9CjzAltGFyq5lDwKBgQC1MUqM7Ylw8PfxvmhGEhLQnmhg9q4toqbF\nq1Aa2YntUWjzYdRj2rek62OpHF+JNawtdb085iSsg1SLHGYGZrusgfjhoRd9KtcD\nATsD1PiaC49jIThEILGaUupbnio9cxKxcIeKClgD/6o7q9QfTNNKCqa90mIuVpmD\nBf4oNrVu1QKBgQCO1BVPkrjgZUzkKsTRj6RI27HUMSDA9Lhs94blFZR+L3v/WWqa\ngvZVfhWm5rXDxjNkSF4tOGkJlZVh+dQkq4+bsy2VXXBxtT5USteNjBy+bguqZRVJ\nXKeFcvWex1XmaRtXM2d8nF6ZoQKQXpVkG2BlnTcllgnFJ64b5mvmyQIyBwKBgQCg\n5Yhh5Hzrwc8q5/4IWvxCLKhbkjHRbGHTnfCgJxSHnIcpuHG1yf7RgAUboopjeTnP\nlIHaljNyzZxBe5JNlOSKp0+ubDJDf8s2a91P5cpsYF+Pk2w3cyDC/WYGvUidEJZE\n4rw5JD5MLreoDUlsEfh+Az9VyIBOza+73ZJ3ez1ZkQKBgQCHdnmgtnEhm8QHQE6s\nKZARILplIWrzWWiza8aZddYYWtoCe3mDeMAU6rW6a013ECBGSMcCjSGO9Jq9rOiJ\nPeGYVUKXjlElkDs5IBvyjexOLhtz3jvsvjbzLj0/hz8db8VWRJbD69KH+5Rswy59\nbx1Pd4yB9PlcQE2yX2KP1eST3Q==\n-----END PRIVATE KEY-----\n",
+  "client_email": "dubizzle-ajans-dealers@psyched-cubist-342516.iam.gserviceaccount.com",
+  "client_id": "108427402206129451033",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dubizzle-ajans-dealers%40psyched-cubist-342516.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
