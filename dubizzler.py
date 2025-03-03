@@ -324,33 +324,7 @@ def main():
         hide_index=True
     )
 
-    # Add a section with featured listings
-    st.header("Featured Listings")
-
-    # Display 5 newest and 5 most expensive listings
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Newest Listings")
-        newest = unique_cars[unique_cars['status'] == 'new'].sort_values('created at', ascending=False).head(5)
-        for _, row in newest.iterrows():
-            with st.container():
-                st.markdown(f"**{row['Car Brand']} {row['Car Name']}** - {row['Year']}")
-                st.markdown(f"💰 **Price:** EGP {row['Price']:,.0f} | 🚗 **Kilometrage:** {row['Kilometrage']}")
-                st.markdown(f"📍 **Location:** {row['Location']} | 🏢 **Dealer:** {row['Dealer Name']}")
-                st.markdown(f"[View Listing]({row['Listing URL']})")
-                st.divider()
-
-    with col2:
-        st.subheader("Premium Listings")
-        premium = unique_cars.sort_values('Price', ascending=False).head(5)
-        for _, row in premium.iterrows():
-            with st.container():
-                st.markdown(f"**{row['Car Brand']} {row['Car Name']}** - {row['Year']}")
-                st.markdown(f"💰 **Price:** EGP {row['Price']:,.0f} | 🚗 **Kilometrage:** {row['Kilometrage']}")
-                st.markdown(f"📍 **Location:** {row['Location']} | 🏢 **Dealer:** {row['Dealer Name']}")
-                st.markdown(f"[View Listing]({row['Listing URL']})")
-                st.divider()
+    
 
 
 if __name__ == "__main__":
