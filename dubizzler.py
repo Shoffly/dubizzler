@@ -26,7 +26,9 @@ def load_data():
             'https://www.googleapis.com/auth/drive'
         ]
 
-        credentials = Credentials.from_service_account_file('sheet_access.json', scopes=scopes)
+          # Use Streamlit secrets instead of a JSON file
+        credentials_dict = st.secrets["gcp_service_account"]
+        credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
         gc = gspread.authorize(credentials)
 
         # Open the spreadsheet
