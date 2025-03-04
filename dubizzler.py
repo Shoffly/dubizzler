@@ -26,13 +26,24 @@ def load_data():
             'https://www.googleapis.com/auth/drive'
         ]
 
-          # Use Streamlit secrets instead of a JSON file
-        credentials_dict = st.secrets["gcp_service_account"]
-        credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+        # Try using service account file first
+        try:
+            credentials = Credentials.from_service_account_file('sheet_access.json', scopes=scopes)
+        except:
+            # If file not found, try using secrets
+            credentials_dict = st.secrets["gcp_service_account"]
+            credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+
         gc = gspread.authorize(credentials)
 
         # Open the spreadsheet
         spreadsheet = gc.open('Dealers Dubizzle Scraper')
+
+        # Get the dealers tab for dealer names FIRST
+        dealers_sheet = spreadsheet.worksheet('dealers')
+        dealer_headers = ['Code', 'Dealer', 'Link']
+        dealers_data = dealers_sheet.get_all_records(expected_headers=dealer_headers)
+        dealers_dict = {dealer['Code']: dealer['Dealer'] for dealer in dealers_data}
 
         # Get the database tab
         database_sheet = spreadsheet.worksheet('database')
@@ -42,12 +53,6 @@ def load_data():
 
         # Convert to DataFrame
         df = pd.DataFrame(data)
-
-        # Get the dealers tab for dealer names
-        dealers_sheet = spreadsheet.worksheet('dealers')
-        dealer_headers = ['Code', 'Dealer', 'Link']
-        dealers_data = dealers_sheet.get_all_records(expected_headers=dealer_headers)
-        dealers_dict = {dealer['Code']: dealer['Dealer'] for dealer in dealers_data}
 
         # Add dealer name column
         df['Dealer Name'] = df['dealer_code'].map(dealers_dict)
@@ -95,7 +100,6 @@ def run_scraper():
 # Main app
 def main():
     st.title("🚗 Dubizzle Car Listings Dashboard")
-
 
     # Load data
     with st.spinner("Loading data..."):
