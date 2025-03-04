@@ -28,7 +28,8 @@ def load_data():
 
         # Try using service account file first
         try:
-            credentials = Credentials.from_service_account_file('sheet_access.json', scopes=scopes)
+            credentials_dict = st.secrets["gcp_service_account"]
+            credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
         except:
             # If file not found, try using secrets
             credentials_dict = st.secrets["gcp_service_account"]
