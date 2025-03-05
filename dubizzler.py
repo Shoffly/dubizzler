@@ -28,8 +28,7 @@ def load_data():
 
         # Try using service account file first
         try:
-            credentials_dict = st.secrets["gcp_service_account"]
-            credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+            credentials = Credentials.from_service_account_file('sheet_access.json', scopes=scopes)
         except:
             # If file not found, try using secrets
             credentials_dict = st.secrets["gcp_service_account"]
@@ -42,14 +41,15 @@ def load_data():
 
         # Get the dealers tab for dealer names FIRST
         dealers_sheet = spreadsheet.worksheet('dealers')
-        dealer_headers = ['Code', 'Dealer', 'Link']
+        dealer_headers = ['Code', 'Dealer', 'Link 1', 'Link 2']
         dealers_data = dealers_sheet.get_all_records(expected_headers=dealer_headers)
         dealers_dict = {dealer['Code']: dealer['Dealer'] for dealer in dealers_data}
 
         # Get the database tab
         database_sheet = spreadsheet.worksheet('database')
         db_headers = ['car_id', 'dealer_code', 'created at', 'Car Brand', 'Car Name', 'Price',
-                      'Kilometrage', 'Year', 'Location', 'Listed', 'Days on Website', 'Listing URL', 'status']
+                      'Kilometrage', 'Year', 'Location', 'Listed', 'Days on Website', 'Listing URL',
+                      'status', 'platform']
         data = database_sheet.get_all_records(expected_headers=db_headers)
 
         # Convert to DataFrame
@@ -102,6 +102,9 @@ def run_scraper():
 def main():
     st.title("🚗 Dubizzle Car Listings Dashboard")
 
+    # Move filters to sidebar
+    st.sidebar.header("Filters")
+
     # Load data
     with st.spinner("Loading data..."):
         df, dealers_dict = load_data()
@@ -114,64 +117,33 @@ def main():
     last_update = df['created at'].max()
     st.info(f"Last updated: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Overview metrics
-    st.header("Overview")
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Move all filters to sidebar
+    selected_dealers = st.sidebar.multiselect(
+        "Select Dealers",
+        options=sorted(df['Dealer Name'].unique()),
+        default=[]
+    )
 
-    with col1:
-        total_listings = len(df['car_id'].unique())
-        st.metric("Total Unique Cars", total_listings)
+    selected_brands = st.sidebar.multiselect(
+        "Select Car Brands",
+        options=sorted(df['Car Brand'].unique()),
+        default=[]
+    )
 
-    with col2:
-        new_listings = len(df[df['status'] == 'new']['car_id'].unique())
-        st.metric("New Cars", new_listings)
+    price_range = st.sidebar.slider(
+        "Price Range (EGP)",
+        min_value=int(df['Price'].min()),
+        max_value=int(df['Price'].max()),
+        value=(int(df['Price'].min()), int(df['Price'].max()))
+    )
 
-    with col3:
-        expired_listings = len(df[df['expired']]['car_id'].unique())
-        st.metric("Expired Listings", expired_listings)
+    listing_status = st.sidebar.multiselect(
+        "Listing Status",
+        options=["New", "Existing", "Expired"],
+        default=["New", "Existing"]
+    )
 
-    with col4:
-        avg_price = df['Price'].mean()
-        st.metric("Average Price", f"EGP {avg_price:,.0f}")
-
-    with col5:
-        dealers_count = df['dealer_code'].nunique()
-        st.metric("Dealers", dealers_count)
-
-    # Filters
-    st.header("Filters")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        selected_dealers = st.multiselect(
-            "Select Dealers",
-            options=sorted(df['Dealer Name'].unique()),
-            default=[]
-        )
-
-    with col2:
-        selected_brands = st.multiselect(
-            "Select Car Brands",
-            options=sorted(df['Car Brand'].unique()),
-            default=[]
-        )
-
-    with col3:
-        price_range = st.slider(
-            "Price Range (EGP)",
-            min_value=int(df['Price'].min()),
-            max_value=int(df['Price'].max()),
-            value=(int(df['Price'].min()), int(df['Price'].max()))
-        )
-
-    with col4:
-        listing_status = st.multiselect(
-            "Listing Status",
-            options=["New", "Existing", "Expired"],
-            default=["New", "Existing"]
-        )
-
-    # Apply filters
+    # Apply filters to create filtered_df
     filtered_df = df.copy()
 
     if selected_dealers:
@@ -197,6 +169,77 @@ def main():
 
     # Get unique cars after filtering
     unique_cars = filtered_df.sort_values('created at').groupby('car_id').last().reset_index()
+
+    # Overview metrics with filtered data
+    st.header("Overview")
+
+    # First row of metrics
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        total_listings = len(unique_cars['car_id'].unique())
+        st.metric("Total Unique Cars", total_listings)
+
+    with col2:
+        new_listings = len(unique_cars[unique_cars['status'] == 'new'])
+        st.metric("New Cars", new_listings)
+
+    with col3:
+        expired_listings = len(unique_cars[unique_cars['expired']])
+        st.metric("Expired Listings", expired_listings)
+
+    with col4:
+        avg_price = unique_cars['Price'].mean()
+        st.metric("Average Price", f"EGP {avg_price:,.0f}")
+
+    with col5:
+        dealers_count = unique_cars['dealer_code'].nunique()
+        st.metric("Active Dealers", dealers_count)
+
+    # Add platform comparison section
+    st.subheader("Platform Distribution")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Platform distribution metrics
+        platform_counts = unique_cars['platform'].value_counts()
+        dubizzle_count = platform_counts.get('dubizzle', 0)
+        hatla2ee_count = platform_counts.get('hatla2ee', 0)
+        both_platforms = len(unique_cars[unique_cars['platform'].str.contains(',', na=False)])
+
+        # Create platform metrics
+        platform_metrics = pd.DataFrame({
+            'Platform': ['Dubizzle Only', 'Hatla2ee Only', 'Both Platforms'],
+            'Count': [
+                dubizzle_count - both_platforms,
+                hatla2ee_count - both_platforms,
+                both_platforms
+            ]
+        })
+
+        # Display platform metrics
+        st.dataframe(
+            platform_metrics,
+            column_config={
+                "Platform": st.column_config.TextColumn("Platform"),
+                "Count": st.column_config.NumberColumn("Number of Listings")
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+
+    with col2:
+        # Platform distribution pie chart
+        fig = px.pie(
+            platform_metrics,
+            values='Count',
+            names='Platform',
+            title='Distribution of Listings by Platform'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
 
     # Display filtered data count
     st.write(f"Showing {len(unique_cars)} unique car listings")
@@ -301,37 +344,68 @@ def main():
     # Data table
     st.header("Car Listings")
 
-    # Select columns to display
-    display_cols = ['Car Brand', 'Car Name', 'Price', 'Year', 'Kilometrage',
-                    'Location', 'Listed', 'Days on Website', 'Dealer Name', 'status']
+    # Update database headers to include links
+    db_headers = {
+        'car_id': 'Car ID',
+        'dealer_code': 'Dealer Code',
+        'created at': 'Created At',
+        'Car Brand': 'Car Brand',
+        'Car Name': 'Car Name',
+        'Price': 'Price',
+        'Kilometrage': 'Kilometrage',
+        'Year': 'Year',
+        'Location': 'Location',
+        'Listed': 'Listed',
+        'Days on Website': 'Days on Website',
+        'Listing URL': 'Listing URL',
+        'status': 'Status',
+        'platform': 'Platform'
+    }
 
-    # Add status indicators
+    # Add links to headers
+    header_links = {
+        'Car Brand': 'https://eg.hatla2ee.com/en/car',
+        'Dealer Code': 'https://www.dubizzle.com.eg/en/cars/dealers/',
+        'Location': 'https://www.google.com/maps',
+        'platform': 'https://www.dubizzle.com.eg'
+    }
+
+    # Update column configuration for data table
+    column_config = {
+        "Car Name": st.column_config.TextColumn("Car Name"),
+        "Price": st.column_config.NumberColumn("Price (EGP)", format="EGP %,.0f"),
+        "Days on Website": st.column_config.NumberColumn("Days on Website", format="%.2f days"),
+        "Status": st.column_config.TextColumn("Status"),
+        "View": st.column_config.LinkColumn("View Listing")
+    }
+
+    # Add link columns for headers that have links
+    for header, link in header_links.items():
+        if header in column_config:
+            column_config[header] = st.column_config.LinkColumn(
+                db_headers[header],
+                help=f"Click to visit {db_headers[header]} page",
+                validate="^https://.*",
+                default=link
+            )
+
+    # Update the data table display with new column configuration
+    display_cols = ['Car Brand', 'Car Name', 'Price', 'Year', 'Kilometrage',
+                    'Location', 'Listed', 'Days on Website', 'Dealer Name', 'status', 'platform']
+
     unique_cars_display = unique_cars[display_cols].copy()
     unique_cars_display['Status'] = unique_cars.apply(
         lambda x: "🆕 New" if x['status'] == 'new' else ("⚠️ Expired" if x['expired'] else "✅ Active"),
         axis=1
     )
 
-    # Add URL column with clickable links
-    unique_cars_display['View'] = unique_cars['Listing URL'].apply(
-        lambda x: f'<a href="{x}" target="_blank">View Listing</a>' if x != "N/A" else "N/A"
-    )
-
-    # Display the data table
+    unique_cars_display['View'] = unique_cars['Listing URL']
     st.dataframe(
         unique_cars_display,
-        column_config={
-            "Car Name": st.column_config.TextColumn("Car Name"),
-            "Price": st.column_config.NumberColumn("Price (EGP)", format="EGP %,.0f"),
-            "Days on Website": st.column_config.NumberColumn("Days on Website", format="%.2f days"),
-            "Status": st.column_config.TextColumn("Status"),
-            "View": st.column_config.LinkColumn("View Listing")
-        },
+        column_config=column_config,
         use_container_width=True,
         hide_index=True
     )
-
-    
 
 
 if __name__ == "__main__":
