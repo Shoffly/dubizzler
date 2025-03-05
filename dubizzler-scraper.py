@@ -146,6 +146,115 @@ def scrape_dubizzle_cars(dealer_url, dealer_code):
 
     return cars_data
 
+def scrape_hatla2ee_cars(dealer_url, dealer_code):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    print(f"Scraping {dealer_url}...")
+    response = requests.get(dealer_url, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Failed to retrieve the page. Status code: {response.status_code}")
+        return []
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    car_listings = soup.select('div.newCarListUnit_contain')
+    cars_data = []
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for car in car_listings:
+        # Extract car name and details
+        car_header = car.select_one('div.newCarListUnit_header a')
+        car_name = car_header.text.strip() if car_header else "N/A"
+
+        # Extract car brand
+        car_brand = extract_car_brand(car_name)
+
+        # Extract price and format it to match Dubizzle's format
+        price_elem = car.select_one('div.main_price a')
+        price = "N/A"
+        if price_elem:
+            # Remove any whitespace and "EGP" from the price
+            price_text = price_elem.text.strip()
+            # Extract numbers and format them
+            price_numbers = ''.join(filter(str.isdigit, price_text))
+            if price_numbers:
+                # Format as "EGP X,XXX,XXX"
+                try:
+                    price_value = int(price_numbers)
+                    price = f"EGP {price_value:,}"
+                except ValueError:
+                    price = "N/A"
+
+        # Extract kilometrage and other details
+        meta_tags = car.select('span.newCarListUnit_metaTag')
+        kilometrage = "N/A"
+        location = "N/A"
+
+        for tag in meta_tags:
+            text = tag.text.strip()
+            if 'Km' in text:
+                kilometrage = text
+            elif any(city in text for city in ['Cairo', 'Giza', 'Alexandria', 'Heliopolis']):
+                location = text
+
+        # Extract year from car name
+        year = "N/A"
+        year_match = re.search(r'\b20\d{2}\b', car_name)
+        if year_match:
+            year = year_match.group(0)
+
+        # Extract listing URL
+        listing_url = ""
+        if car_header and 'href' in car_header.attrs:
+            listing_url = f"https://eg.hatla2ee.com{car_header['href']}"
+
+        # Extract listing date from otherData_Date
+        date_elem = car.select_one('div.otherData_Date span')
+        listing_time = date_elem.text.strip() if date_elem else "N/A"
+
+        # Calculate days on website
+        days_on_website = "N/A"
+        if listing_time != "N/A":
+            try:
+                listing_date = datetime.strptime(listing_time.strip(), "%Y-%m-%d")
+                current_date = datetime.now()
+                days_on_website = (current_date - listing_date).days
+            except Exception as e:
+                print(f"Error parsing date {listing_time}: {str(e)}")
+                pass
+
+        # Create unique ID
+        car_details = f"{dealer_code}_{car_name}_{year}_{kilometrage}"
+        car_id = hashlib.md5(car_details.encode()).hexdigest()
+
+        cars_data.append({
+            'car_id': car_id,
+            'dealer_code': dealer_code,
+            'created at': current_time,
+            'Car Brand': car_brand,
+            'Car Name': car_name,
+            'Price': price,
+            'Kilometrage': kilometrage,
+            'Year': year,
+            'Location': location,
+            'Listed': listing_time,
+            'Days on Website': days_on_website,
+            'Listing URL': listing_url
+        })
+
+    return cars_data
+
+def determine_website_type(url):
+    """Determine which website scraper to use based on the URL."""
+    if 'dubizzle.com' in url.lower():
+        return 'dubizzle'
+    elif 'hatla2ee.com' in url.lower():
+        return 'hatla2ee'
+    else:
+        return 'unknown'
+
 def main():
     # Set up Google Sheets API
     scopes = [
@@ -162,16 +271,17 @@ def main():
 
         # Get the dealers tab
         dealers_sheet = spreadsheet.worksheet('dealers')
-        # Define expected headers for dealers sheet
-        dealer_headers = ['Code', 'Dealer', 'Link']
+        # Update headers for dealers sheet to include Link 2
+        dealer_headers = ['Code', 'Dealer', 'Link 1', 'Link 2']
         dealers_data = dealers_sheet.get_all_records(expected_headers=dealer_headers)
 
         # Get the database tab
         database_sheet = spreadsheet.worksheet('database')
 
-        # Define expected headers for database sheet
+        # Update headers for database sheet to include platform
         db_headers = ['car_id', 'dealer_code', 'created at', 'Car Brand', 'Car Name', 'Price', 
-                     'Kilometrage', 'Year', 'Location', 'Listed', 'Days on Website', 'Listing URL', 'status']
+                     'Kilometrage', 'Year', 'Location', 'Listed', 'Days on Website', 'Listing URL', 
+                     'status', 'platform']
 
         # Get existing car IDs to check for new vs. existing cars
         existing_data = database_sheet.get_all_records(expected_headers=db_headers)
@@ -192,24 +302,70 @@ def main():
         for dealer in dealers_data:
             dealer_code = dealer['Code']
             dealer_name = dealer['Dealer']
-            dealer_url = dealer['Link']
+            all_cars = []
 
-            print(f"\nProcessing dealer: {dealer_name} (Code: {dealer_code})")
+            # Process Link 1
+            if dealer['Link 1']:
+                print(f"\nProcessing dealer: {dealer_name} (Code: {dealer_code}) - Link 1")
+                website_type = determine_website_type(dealer['Link 1'])
 
-            # Scrape cars for this dealer
-            cars = scrape_dubizzle_cars(dealer_url, dealer_code)
+                if website_type == 'dubizzle':
+                    cars = scrape_dubizzle_cars(dealer['Link 1'], dealer_code)
+                    for car in cars:
+                        car['platform'] = 'dubizzle'
+                    all_cars.extend(cars)
+                elif website_type == 'hatla2ee':
+                    cars = scrape_hatla2ee_cars(dealer['Link 1'], dealer_code)
+                    for car in cars:
+                        car['platform'] = 'hatla2ee'
+                    all_cars.extend(cars)
 
-            if not cars:
+            # Process Link 2 if it exists
+            if dealer.get('Link 2'):
+                print(f"\nProcessing dealer: {dealer_name} (Code: {dealer_code}) - Link 2")
+                website_type = determine_website_type(dealer['Link 2'])
+
+                if website_type == 'dubizzle':
+                    cars = scrape_dubizzle_cars(dealer['Link 2'], dealer_code)
+                    for car in cars:
+                        car['platform'] = 'dubizzle'
+                    all_cars.extend(cars)
+                elif website_type == 'hatla2ee':
+                    cars = scrape_hatla2ee_cars(dealer['Link 2'], dealer_code)
+                    for car in cars:
+                        car['platform'] = 'hatla2ee'
+                    all_cars.extend(cars)
+
+            # Deduplicate cars across platforms
+            unique_cars = []
+            seen_cars = set()
+
+            for car in all_cars:
+                # Create a key based on car details (excluding price and platform)
+                car_key = f"{car['Car Name']}_{car['Year']}_{car['Kilometrage']}"
+
+                if car_key not in seen_cars:
+                    seen_cars.add(car_key)
+                    unique_cars.append(car)
+                else:
+                    # If car exists on both platforms, update existing entry with both platforms
+                    for existing_car in unique_cars:
+                        existing_key = f"{existing_car['Car Name']}_{existing_car['Year']}_{existing_car['Kilometrage']}"
+                        if existing_key == car_key:
+                            existing_car['platform'] = f"{existing_car['platform']}, {car['platform']}"
+                            break
+
+            if not unique_cars:
                 print(f"No car listings found for {dealer_name}.")
                 continue
 
-            print(f"Found {len(cars)} car listings for {dealer_name}.")
+            print(f"Found {len(unique_cars)} unique car listings for {dealer_name}.")
 
-            # Prepare data for Google Sheets for this dealer only
+            # Prepare data for Google Sheets
             rows_to_add = []
             dealer_new_cars = 0
 
-            for car in cars:
+            for car in unique_cars:
                 # Check if this car is new or existing
                 if car['car_id'] in existing_car_ids:
                     car['status'] = 'existing'
